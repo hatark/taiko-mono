@@ -6,12 +6,6 @@
 
 pragma solidity ^0.8.18;
 
-import {LibTrieProof} from "../../libs/LibTrieProof.sol";
-
-contract TestLibTrieProof {
-    function writeStorageAt(bytes32 slot, bytes32 val) public {
-        assembly {
-            sstore(slot, val)
-        }
-    }
+library LibL2Consts {
+    uint64 public constant ANCHOR_GAS_COST = 180000; // owner:david
 }

@@ -7,10 +7,10 @@
 pragma solidity ^0.8.18;
 
 import {AddressResolver} from "../../common/AddressResolver.sol";
-import {LibAddress} from "../../libs/LibAddress.sol";
-import {ISignalService} from "../../signal/ISignalService.sol";
-import {LibBridgeData} from "./LibBridgeData.sol";
 import {IBridge} from "../IBridge.sol";
+import {ISignalService} from "../../signal/ISignalService.sol";
+import {LibAddress} from "../../libs/LibAddress.sol";
+import {LibBridgeData} from "./LibBridgeData.sol";
 
 /**
  * Entry point for starting a bridge transaction.
@@ -21,10 +21,10 @@ library LibBridgeSend {
     using LibAddress for address;
     using LibBridgeData for IBridge.Message;
 
+    error B_INCORRECT_VALUE();
     error B_OWNER_IS_NULL();
     error B_WRONG_CHAIN_ID();
     error B_WRONG_TO_ADDRESS();
-    error B_INCORRECT_VALUE();
 
     /**
      * Send a message to the Bridge with the details of the request. The Bridge
@@ -50,10 +50,8 @@ library LibBridgeSend {
             revert B_OWNER_IS_NULL();
         }
 
-        (bool destChainEnabled, address destChain) = isDestChainEnabled(
-            resolver,
-            message.destChainId
-        );
+        (bool destChainEnabled, address destChain) =
+            isDestChainEnabled(resolver, message.destChainId);
 
         if (!destChainEnabled || message.destChainId == block.chainid) {
             revert B_WRONG_CHAIN_ID();
@@ -62,9 +60,7 @@ library LibBridgeSend {
             revert B_WRONG_TO_ADDRESS();
         }
 
-        uint256 expectedAmount = message.depositValue +
-            message.callValue +
-            message.processingFee;
+        uint256 expectedAmount = message.depositValue + message.callValue + message.processingFee;
 
         if (expectedAmount != msg.value) {
             revert B_INCORRECT_VALUE();
@@ -74,9 +70,7 @@ library LibBridgeSend {
         // store it here on the Bridge. Processing will release Ether from the
         // EtherVault or the Bridge on the destination chain.
         address ethVault = resolver.resolve("ether_vault", true);
-        if (ethVault != address(0)) {
-            ethVault.sendEther(expectedAmount);
-        }
+        ethVault.sendEther(expectedAmount);
 
         message.id = state.nextMessageId++;
         message.sender = msg.sender;
@@ -85,27 +79,28 @@ library LibBridgeSend {
         msgHash = message.hashMessage();
         // Store a key which is the hash of this contract address and the
         // msgHash, with a value of 1.
-        ISignalService(resolver.resolve("signal_service", false)).sendSignal(
-            msgHash
-        );
+        ISignalService(resolver.resolve("signal_service", false)).sendSignal(msgHash);
         emit LibBridgeData.MessageSent(msgHash, message);
     }
 
-    function isDestChainEnabled(
-        AddressResolver resolver,
-        uint256 chainId
-    ) internal view returns (bool enabled, address destBridge) {
+    function isDestChainEnabled(AddressResolver resolver, uint256 chainId)
+        internal
+        view
+        returns (bool enabled, address destBridge)
+    {
         destBridge = resolver.resolve(chainId, "bridge", true);
         enabled = destBridge != address(0);
     }
 
-    function isMessageSent(
-        AddressResolver resolver,
-        bytes32 msgHash
-    ) internal view returns (bool) {
-        return
-            ISignalService(resolver.resolve("signal_service", false))
-                .isSignalSent({app: address(this), signal: msgHash});
+    function isMessageSent(AddressResolver resolver, bytes32 msgHash)
+        internal
+        view
+        returns (bool)
+    {
+        return ISignalService(resolver.resolve("signal_service", false)).isSignalSent({
+            app: address(this),
+            signal: msgHash
+        });
     }
 
     function isMessageReceived(
@@ -115,13 +110,11 @@ library LibBridgeSend {
         bytes calldata proof
     ) internal view returns (bool) {
         address srcBridge = resolver.resolve(srcChainId, "bridge", false);
-        return
-            ISignalService(resolver.resolve("signal_service", false))
-                .isSignalReceived({
-                    srcChainId: srcChainId,
-                    app: srcBridge,
-                    signal: msgHash,
-                    proof: proof
-                });
+        return ISignalService(resolver.resolve("signal_service", false)).isSignalReceived({
+            srcChainId: srcChainId,
+            app: srcBridge,
+            signal: msgHash,
+            proof: proof
+        });
     }
 }

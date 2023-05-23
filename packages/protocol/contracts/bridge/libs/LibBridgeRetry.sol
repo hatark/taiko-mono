@@ -6,13 +6,13 @@
 
 pragma solidity ^0.8.18;
 
-import {EtherVault} from "../EtherVault.sol";
-import {LibBridgeInvoke} from "./LibBridgeInvoke.sol";
-import {LibBridgeData} from "./LibBridgeData.sol";
-import {LibBridgeStatus} from "./LibBridgeStatus.sol";
-import {LibAddress} from "../../libs/LibAddress.sol";
-import {IBridge} from "../IBridge.sol";
 import {AddressResolver} from "../../common/AddressResolver.sol";
+import {EtherVault} from "../EtherVault.sol";
+import {IBridge} from "../IBridge.sol";
+import {LibAddress} from "../../libs/LibAddress.sol";
+import {LibBridgeData} from "./LibBridgeData.sol";
+import {LibBridgeInvoke} from "./LibBridgeInvoke.sol";
+import {LibBridgeStatus} from "./LibBridgeStatus.sol";
 
 /**
  * Retry bridge messages.
@@ -53,10 +53,7 @@ library LibBridgeRetry {
         }
 
         bytes32 msgHash = message.hashMessage();
-        if (
-            LibBridgeStatus.getMessageStatus(msgHash) !=
-            LibBridgeStatus.MessageStatus.RETRIABLE
-        ) {
+        if (LibBridgeStatus.getMessageStatus(msgHash) != LibBridgeStatus.MessageStatus.RETRIABLE) {
             revert B_MSG_NON_RETRIABLE();
         }
 
@@ -67,31 +64,25 @@ library LibBridgeRetry {
 
         // successful invocation
         if (
-            // The message.gasLimit only apply for processMessage, if it fails
-            // then whoever calls retryMessage will use the tx's gasLimit.
-            LibBridgeInvoke.invokeMessageCall({
+            LibBridgeInvoke
+                // The message.gasLimit only apply for processMessage, if it fails
+                // then whoever calls retryMessage will use the tx's gasLimit.
+                .invokeMessageCall({
                 state: state,
                 message: message,
                 msgHash: msgHash,
                 gasLimit: gasleft()
             })
         ) {
-            LibBridgeStatus.updateMessageStatus(
-                msgHash,
-                LibBridgeStatus.MessageStatus.DONE
-            );
+            LibBridgeStatus.updateMessageStatus(msgHash, LibBridgeStatus.MessageStatus.DONE);
         } else if (isLastAttempt) {
-            LibBridgeStatus.updateMessageStatus(
-                msgHash,
-                LibBridgeStatus.MessageStatus.FAILED
-            );
+            LibBridgeStatus.updateMessageStatus(msgHash, LibBridgeStatus.MessageStatus.FAILED);
 
-            address refundAddress = message.refundAddress == address(0)
-                ? message.owner
-                : message.refundAddress;
+            address refundAddress =
+                message.refundAddress == address(0) ? message.owner : message.refundAddress;
 
             refundAddress.sendEther(message.callValue);
-        } else if (ethVault != address(0)) {
+        } else {
             ethVault.sendEther(message.callValue);
         }
     }

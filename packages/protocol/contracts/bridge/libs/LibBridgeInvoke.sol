@@ -6,7 +6,9 @@
 
 pragma solidity ^0.8.18;
 
-import {LibBridgeData, IBridge, LibAddress} from "./LibBridgeData.sol";
+import {IBridge} from "../IBridge.sol";
+import {LibAddress} from "../../libs/LibAddress.sol";
+import {LibBridgeData} from "./LibBridgeData.sol";
 
 library LibBridgeInvoke {
     using LibAddress for address;
@@ -14,9 +16,9 @@ library LibBridgeInvoke {
 
     error B_GAS_LIMIT();
 
-    /*********************
-     * Internal Functions*
-     *********************/
+    /*//////////////////////////////////////////////////////////////
+                           INTERNAL FUNCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     function invokeMessageCall(
         LibBridgeData.State storage state,
@@ -34,9 +36,7 @@ library LibBridgeInvoke {
             srcChainId: message.srcChainId
         });
 
-        (success, ) = message.to.call{value: message.callValue, gas: gasLimit}(
-            message.data
-        );
+        (success,) = message.to.call{value: message.callValue, gas: gasLimit}(message.data);
 
         state.ctx = IBridge.Context({
             msgHash: LibBridgeData.MESSAGE_HASH_PLACEHOLDER,
